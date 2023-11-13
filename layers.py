@@ -55,8 +55,8 @@ class MultiHeadAttention(nn.Module):
         self.d_k=d_model//h # d_key=d_value
         self.query_linear=nn.Linear(d_model,d_model)
         self.key_linear=nn.Linear(d_model,d_model)
-        self.value_linear=nn.Linear(d_model,self.d_model)
-        self.out_linear=nn.Linear()
+        self.value_linear=nn.Linear(d_model,d_model)
+        self.out_linear=nn.Linear(d_model,d_model)
 
     def split_to_multi_heads(self,x):
         batch_size,seq_len,d_model=x.size()
