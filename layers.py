@@ -34,8 +34,8 @@ class PositionalEncoding(nn.Module):
         super().__init__()
 
         self.PE=torch.zeros(shape=(d_model,max_seq_len))
-        pos=torch.arrange(0,max_seq_len)
-        _2i=torch.arrange(0,max_seq_len,2)
+        pos=torch.arange(0,max_seq_len)
+        _2i=torch.arange(0,max_seq_len,2)
 
         self.PE[:,0::2]=torch.sin(pos/(10000**(_2i/d_model)))
         self.PE[:,1::2]=torch.sin(pos/(10000**(_2i/d_model)))
@@ -46,5 +46,52 @@ class PositionalEncoding(nn.Module):
         out=input_embeds+self.PE[:seq_len,:]
 
         return out
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self,d_model,h):
+        super().__init__()
+        self.num_heads=h
+        self.d_model=d_model
+        self.d_k=d_model//h # d_key=d_value
+        self.query_linear=nn.Linear(d_model,d_model)
+        self.key_linear=nn.Linear(d_model,d_model)
+        self.value_linear=nn.Linear(d_model,self.d_model)
+        self.out_linear=nn.Linear()
+
+    def split_to_multi_heads(self,x):
+        batch_size,seq_len,d_model=x.size()
+        splitted_x=x.reshape(batch_size,seq_len,self.num_heads,self.d_k).transpose(1,2)
+
+        return splitted_x
+
+    def scaled_dot_product_attention(self,Q,K,V):
+        att_score=torch.dot(Q,torch.transpose(K,-2,-1)) # b*
+        scale_factor=math.sqrt(self.d_key)
+        cos_similarity=att_score/scale_factor
+        self_attention=torch.matmul(nn.Softmax(cos_similarity),V)
+            
+        return self_attention
+    
+    def concat_multi_heads(self,x):
+        batch_size,num_heads,seq_len,d_k=x.size()
+        concat_x=x.transpose(1,2).reshape(batch_size,seq_len,self.d_model)
+
+        return concat_x
+
+
+    def forward(self,x):
+        # x는 input embedding+positional encoding
+        Q_heads=self.split_to_multi_heads(self.query_linear(x))
+        K_heads=self.split_to_multi_heads(self.key_linear(x))
+        V_heads=self.split_to_multi_heads(self.value_linear(x))
+
+        multi_attention=self.scaled_dot_product_attention(Q_heads,K_heads,V_heads)
+        concat_attention=self.concat_multi_heads(multi_attention)
+        out=self.out_linear(concat_attention)
+
+        return out
+
+
+
 
 
