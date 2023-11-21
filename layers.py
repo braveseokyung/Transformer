@@ -79,11 +79,11 @@ class MultiHeadAttention(nn.Module):
         return concat_x
 
 
-    def forward(self,x):
-        # x는 input embedding+positional encoding
-        Q_heads=self.split_to_multi_heads(self.query_linear(x))
-        K_heads=self.split_to_multi_heads(self.key_linear(x))
-        V_heads=self.split_to_multi_heads(self.value_linear(x))
+    def forward(self,Q,K,V,mask):
+        # input embedding+positional encoding
+        Q_heads=self.split_to_multi_heads(self.query_linear(Q))
+        K_heads=self.split_to_multi_heads(self.key_linear(K))
+        V_heads=self.split_to_multi_heads(self.value_linear(V))
 
         multi_attention=self.scaled_dot_product_attention(Q_heads,K_heads,V_heads)
         concat_attention=self.concat_multi_heads(multi_attention)
@@ -92,6 +92,43 @@ class MultiHeadAttention(nn.Module):
         return out
 
 
+class EncoderLayer(nn.Module):
+    def __init__(self,d_model,d_inner,num_heads):
+        super().__init__()
+
+        # self.Emb=Embedding(vocab_size,d_model)
+        # self.PE=PositionalEncoding(d_model,max_seq_len)
+        self.MHA=MultiHeadAttention(d_model,num_heads)
+        self.FF=FeedForward(d_model,d_inner)
+        self.norm1=nn.LayerNorm(d_model)
+        self.norm2=nn.LayerNorm(d_model)
+
+    def forward(self,x):
+        # 첫번째 encoder에서 embedding layer를 거친 값
+        # emb=self.PE(self.Emb(x))
+        attn_out=self.MHA(x,x,x)
+        norm_out=self.norm1(x+attn_out)
+        ff_out=self.FF(norm_out)
+        out=self.norm2(ff_out+out)
+
+        return out
 
 
+class DecoderLayer(nn.Module):
+    def __init__(self,d_model,d_inner,num_heads):
+        super().__init__()
+        self.dec_MHA=MultiHeadAttention(d_model,num_heads)
+        self.enc_dec_MHA=MultiHeadAttention(d_model,num_heads)
+        self.norm1=nn.Layernorm(d_model)
+        self.norm2=nn.Layernorm(d_model)
+        self.norm3=nn.Layernorm(d_model)
 
+    def forward(self,x,encoder_out,src_mask,target_mask):
+        dec_attn_out=self.dec_MHA(x,x,x,target_mask)
+        norm_out=self.norm1(x+dec_attn_out)
+        enc_dec_attn_out=self.enc_dec_MHA(encoder_out,encoder_out,norm_out,mask=None)
+        norm_out_2=self.norm2(norm_out+enc_dec_attn_out)
+        ff_out=self.ff(norm_out_2)
+        out=self.norm3(norm_out_2+ff_out)
+
+        return out
