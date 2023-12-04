@@ -31,3 +31,4 @@ test_dataset=CustomDataset(test_df['en_encoded'],test_df['de_encoded'])
 train_dataloader=DataLoader(train_dataset,batch_size=16,shuffle=True,collate_fn=custom_collate_fn)
 val_dataloader=DataLoader(val_dataset,batch_size=16,shuffle=False,collate_fn=custom_collate_fn)
 test_dataloader=DataLoader(test_dataset,batch_size=16,shuffle=False,collate_fn=custom_collate_fn)
+

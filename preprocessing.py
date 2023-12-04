@@ -52,3 +52,6 @@ tokenize(test_df,en_sp,de_sp)
 train_df.to_pickle('./Dataset/train_df.pkl')
 val_df.to_pickle('./Dataset/val_df.pkl')
 test_df.to_pickle('./Dataset/test_df.pkl')
+
+src_vocab_size=len(en_sp)
+tgt_vocab_size=len(de_sp)
