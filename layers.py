@@ -119,16 +119,40 @@ class DecoderLayer(nn.Module):
         super().__init__()
         self.dec_MHA=MultiHeadAttention(d_model,num_heads)
         self.enc_dec_MHA=MultiHeadAttention(d_model,num_heads)
-        self.norm1=nn.Layernorm(d_model)
-        self.norm2=nn.Layernorm(d_model)
-        self.norm3=nn.Layernorm(d_model)
+        self.norm1=nn.LayerNorm(d_model)
+        self.norm2=nn.LayerNorm(d_model)
+        self.norm3=nn.LayerNorm(d_model)
+        self.FF=FeedForward(d_model,d_inner)
 
     def forward(self,x,encoder_out,src_mask,target_mask):
         dec_attn_out=self.dec_MHA(x,x,x,target_mask)
         norm_out=self.norm1(x+dec_attn_out)
         enc_dec_attn_out=self.enc_dec_MHA(encoder_out,encoder_out,norm_out,mask=None)
         norm_out_2=self.norm2(norm_out+enc_dec_attn_out)
-        ff_out=self.ff(norm_out_2)
+        ff_out=self.FF(norm_out_2)
         out=self.norm3(norm_out_2+ff_out)
 
         return out
+
+class Transformer(nn.Module):
+    def __init__(self,src_vocab_size,tgt_vocab_size,d_model,max_seq_len,d_inner,num_heads):
+        super().__init__()
+
+        self.input_embedding=Embedding(src_vocab_size,d_model)
+        self.output_embedding=Embedding(tgt_vocab_size,d_model)
+        self.pos_encoding=PositionalEncoding(d_model,max_seq_len)
+        self.encoder=EncoderLayer(d_model,d_inner,num_heads)
+        self.decoder=DecoderLayer(d_model,d_inner,num_heads)
+        self.linear=nn.Linear(d_model,tgt_vocab_size)
+
+
+    def forward(self,src,tgt):
+        src_emb=self.pos_encoding(self.input_embedding(src))
+        tgt_emb=self.pos_encoding(self.input_embedding(tgt))
+
+        enc_out=self.encoder(src_emb)
+        dec_out=self.decoder(tgt_emb,enc_out)
+        out=self.linear(dec_out)
+
+        return out
+
